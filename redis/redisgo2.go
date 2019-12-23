@@ -1,11 +1,17 @@
 package main
+
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/garyburd/redigo/redis"
-	"time"
 )
 
 func main() {
+
+
+	//读写json到redis
+	var mymapGet map[string]string
+
 	c, err := redis.Dial("tcp", "127.0.0.1:6379")
 	if err != nil {
 		fmt.Println("Connect to redis error", err)
@@ -15,39 +21,27 @@ func main() {
 	}
 	defer c.Close()
 
-//设置过期呢，可以使用SET的附加参数c.Do("set","mykey", "jamiezhangming","EX","5")
-	_, err = c.Do("set","mykey", "jamiezhangming","EX","5")
+	mykey := "profile"
+	mymap := map[string]string{"username":"jamiezhangming", "id":"88888"}
+	value, _ := json.Marshal(mymap)
+
+	n, err := c.Do("setnx",mykey,value)
 	if err != nil{
 		fmt.Println("redis set failed:", err)
 	}
-	username, err := redis.String(c.Do("get", "mykey"))
-	if err != nil{
-		fmt.Println("redis set failed1:", err)
-	} else {
-		fmt.Printf("get mykey: %v \n", username)
+	if n == int64(1) {
+		fmt.Println("success")
 	}
 
-	time.Sleep(7*time.Second)
-
-	//批量写入读取
-	//
-	//MGET key [key …]
-	//MSET key value [key value …]
-	//
-	//批量写入读取对象(Hashtable)
-	//HMSET key field value [field value …]
-	//HMGET key field [field …]
-	//
-	//检测值是否存在
-	//EXISTS key
-	//删除
-	//DEL key [key …]
-
-	username, err = redis.String(c.Do("get", "mykey"))
+	valueGet, err := redis.Bytes(c.Do("get", mykey))
 	if err != nil{
-		fmt.Println("redis set failed1:", err)
-	} else {
-		fmt.Printf("get mykey: %v \n", username)
+		fmt.Println("redis get failed:", err)
 	}
+	errShal := json.Unmarshal(valueGet, &mymapGet)
+	if errShal != nil{
+		fmt.Println("redis json unmarshal failed:", err)
+	}
+
 
 }
+
